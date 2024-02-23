@@ -162,8 +162,8 @@ void ListProcesses()
             _tprintf(TEXT("\n  Priority class    = %d"), dwPriorityClass);
 
         // List the modules and threads associated with this process
-        ListProcessModules(pe32.th32ProcessID);
-        ListProcessThreads(pe32.th32ProcessID);
+        //ListProcessModules(pe32.th32ProcessID);
+        //ListProcessThreads(pe32.th32ProcessID);
 
     } while (Process32Next(hProcessSnap, &pe32));
 
