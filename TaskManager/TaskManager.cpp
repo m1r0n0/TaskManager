@@ -1,31 +1,36 @@
 ﻿#include <windows.h>
-#include <tlhelp32.h>
 #include <tchar.h>
+#include <tlhelp32.h>
 
-void printError(TCHAR* msg)
+// Function declarations
+void ListProcesses(HWND hWnd);
+void printError(TCHAR* msg);
+
+// Global variables
+HWND g_Button;
+
+// Window Procedure
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    DWORD eNum;
-    TCHAR sysMsg[256];
-    TCHAR* p;
-
-    eNum = GetLastError();
-    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        NULL, eNum,
-        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-        sysMsg, 256, NULL);
-
-    // Trim the end of the line and terminate it with a null
-    p = sysMsg;
-    while ((*p > 31) || (*p == 9))
-        ++p;
-    do { *p-- = 0; } while ((p >= sysMsg) &&
-        ((*p == '.') || (*p < 33)));
-
-    // Display the message
-    _tprintf(TEXT("\n  WARNING: %s failed with error %d (%s)"), msg, eNum, sysMsg);
+    switch (message)
+    {
+    case WM_COMMAND:
+        if (LOWORD(wParam) == BN_CLICKED && (HWND)lParam == g_Button)
+        {
+            ListProcesses(hWnd);
+        }
+        break;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    default:
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+    return 0;
 }
 
-void ListProcesses()
+// Function to list processes
+void ListProcesses(HWND hWnd)
 {
     HANDLE hProcessSnap;
     PROCESSENTRY32 pe32;
@@ -83,8 +88,102 @@ void ListProcesses()
     CloseHandle(hProcessSnap);
 }
 
-int main(void)
+// Function to print error messages
+void printError(TCHAR* msg)
 {
-    ListProcesses();
-    return 0;
+    DWORD eNum;
+    TCHAR sysMsg[256];
+    TCHAR* p;
+
+    eNum = GetLastError();
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL, eNum,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+        sysMsg, 256, NULL);
+
+    // Trim the end of the line and terminate it with a null
+    p = sysMsg;
+    while ((*p > 31) || (*p == 9))
+        ++p;
+    do { *p-- = 0; } while ((p >= sysMsg) &&
+        ((*p == '.') || (*p < 33)));
+
+    // Display the message
+    _tprintf(TEXT("\n  WARNING: %s failed with error %d (%s)"), msg, eNum, sysMsg);
+}
+
+// Entry point
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
+    WNDCLASSEX wcex;
+    HWND hWnd;
+    MSG msg;
+
+    // Register Window Class
+    wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.style = CS_HREDRAW | CS_VREDRAW;
+    wcex.lpfnWndProc = WndProc;
+    wcex.cbClsExtra = 0;
+    wcex.cbWndExtra = 0;
+    wcex.hInstance = hInstance;
+    wcex.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wcex.lpszMenuName = NULL;
+    wcex.lpszClassName = _T("ProcessListerClass");
+    wcex.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+
+    if (!RegisterClassEx(&wcex))
+    {
+        MessageBox(NULL, _T("Call to RegisterClassEx failed!"), _T("Error"), MB_ICONERROR);
+        return 1;
+    }
+
+    // Create Window
+    hWnd = CreateWindow(
+        _T("ProcessListerClass"),
+        _T("Process Lister"),
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        400, 300,
+        NULL,
+        NULL,
+        hInstance,
+        NULL);
+
+    if (!hWnd)
+    {
+        MessageBox(NULL, _T("Call to CreateWindow failed!"), _T("Error"), MB_ICONERROR);
+        return 1;
+    }
+
+    // Create Button
+    g_Button = CreateWindow(
+        _T("BUTTON"),
+        _T("List Processes"),
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+        50, 50,
+        200, 50,
+        hWnd,
+        NULL,
+        hInstance,
+        NULL);
+
+    if (!g_Button)
+    {
+        MessageBox(NULL, _T("Call to CreateWindow for Button failed!"), _T("Error"), MB_ICONERROR);
+        return 1;
+    }
+
+    ShowWindow(hWnd, nCmdShow);
+    UpdateWindow(hWnd);
+
+    // Main message loop
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    return (int)msg.wParam;
 }
